@@ -11,6 +11,7 @@ class CreateTripScreen extends StatefulWidget {
 
 class _CreateTripScreenState extends State<CreateTripScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _sourceController = TextEditingController();
   final _destinationController = TextEditingController();
   final _budgetController = TextEditingController();
 
@@ -33,6 +34,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
   @override
   void dispose() {
+    _sourceController.dispose();
     _destinationController.dispose();
     _budgetController.dispose();
     super.dispose();
@@ -58,6 +60,12 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    if (_sourceController.text.trim().toLowerCase() ==
+        _destinationController.text.trim().toLowerCase()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Source and destination can\'t be the same')));
+      return;
+    }
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Please select trip dates')));
@@ -70,6 +78,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     }
 
     final trip = Trip(
+      source: _sourceController.text.trim(),
       destination: _destinationController.text.trim(),
       startDate: _startDate!,
       endDate: _endDate!,
@@ -80,7 +89,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     );
 
     // Itinerary generation (mock for now) is wired in the next step.
-    debugPrint('Trip created: ${trip.destination}, ${trip.durationInDays} days');
+    debugPrint('Trip created: ${trip.source} → ${trip.destination}, ${trip.durationInDays} days');
   }
 
   @override
@@ -93,6 +102,20 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const Text('Source', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _sourceController,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Ahmedabad',
+                  prefixIcon: Icon(Icons.trip_origin),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                (value == null || value.trim().isEmpty) ? 'Enter a starting location' : null,
+              ),
+              const SizedBox(height: 20),
+
               const Text('Destination', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               TextFormField(
