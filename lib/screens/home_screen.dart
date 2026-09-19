@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/destination.dart';
+import '../models/trip.dart';
 import '../widgets/destination_card.dart';
 import '../app/routes.dart';
 import '../firebase/firestore_providers.dart';
 import '../firebase/auth_providers.dart';
+import '../firebase/trip_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -120,9 +122,30 @@ class HomeScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            _EmptyTripsState(
-              onCreate: () =>
-                  Navigator.pushNamed(context, AppRoutes.createTrip),
+            ref.watch(userTripsProvider).when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (error, stack) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'Error loading trips: $error',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+              data: (trips) {
+                if (trips.isEmpty) {
+                  return _EmptyTripsState(
+                    onCreate: () =>
+                        Navigator.pushNamed(context, AppRoutes.createTrip),
+                  );
+                }
+                return Column(
+                  children:
+                  trips.map((trip) => _TripListTile(trip: trip)).toList(),
+                );
+              },
             ),
           ],
         ),
@@ -131,8 +154,31 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Shown when the user has no saved trips yet. Will be replaced by a real
-/// list once local/Firebase trip storage exists (Phase 5 / 6).
+class _TripListTile extends StatelessWidget {
+  final Trip trip;
+
+  const _TripListTile({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: const Icon(Icons.card_travel),
+        title: Text('${trip.source} → ${trip.destination}'),
+        subtitle: Text(
+          '${_fmt(trip.startDate)} – ${_fmt(trip.endDate)} · '
+              '${trip.travellers} traveller${trip.travellers == 1 ? '' : 's'}',
+        ),
+      ),
+    );
+  }
+
+  String _fmt(DateTime date) => '${date.day}/${date.month}/${date.year}';
+}
+
+/// Shown when the signed-in user has no saved trips yet (userTripsProvider
+/// returned an empty list).
 class _EmptyTripsState extends StatelessWidget {
   final VoidCallback onCreate;
 
