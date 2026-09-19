@@ -5,6 +5,7 @@ import '../models/destination.dart';
 import '../widgets/destination_card.dart';
 import '../app/routes.dart';
 import '../firebase/firestore_providers.dart';
+import '../firebase/auth_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -12,7 +13,25 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Travel Planner')),
+      appBar: AppBar(
+        title: const Text('AI Travel Planner'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Log out',
+            onPressed: () async {
+              await ref.read(authProvider.notifier).signOut();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.authGate,
+                      (route) => false,
+                );
+              }
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),

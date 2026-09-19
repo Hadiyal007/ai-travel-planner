@@ -6,6 +6,7 @@ import '../screens/home_screen.dart';
 import '../screens/create_trip_screen.dart';
 import '../screens/signup_screen.dart';
 import '../screens/login_screen.dart';
+import 'auth_gate.dart';
 
 class TravelPlannerApp extends StatelessWidget {
   const TravelPlannerApp({super.key});
@@ -19,6 +20,7 @@ class TravelPlannerApp extends StatelessWidget {
       initialRoute: AppRoutes.splash,
       routes: {
         AppRoutes.splash: (context) => const SplashScreen(),
+        AppRoutes.authGate: (context) => const AuthGate(),
         AppRoutes.signup: (context) => const SignupScreen(),
         AppRoutes.login: (context) => const LoginScreen(),
         AppRoutes.home: (context) => const HomeScreen(),
