@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/trip.dart';
 import '../widgets/selectable_chip.dart';
+import '../widgets/place_autocomplete_field.dart';
 import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
 
@@ -127,29 +128,21 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text('Source', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              TextFormField(
+              PlaceAutocompleteField(
                 controller: _sourceController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Ahmedabad',
-                  prefixIcon: Icon(Icons.trip_origin),
-                  border: OutlineInputBorder(),
-                ),
+                label: 'Source',
+                hint: 'e.g. Ahmedabad',
+                icon: Icons.trip_origin,
                 validator: (value) =>
                 (value == null || value.trim().isEmpty) ? 'Enter a starting location' : null,
               ),
               const SizedBox(height: 20),
 
-              const Text('Destination', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              TextFormField(
+              PlaceAutocompleteField(
                 controller: _destinationController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Goa',
-                  prefixIcon: Icon(Icons.place_outlined),
-                  border: OutlineInputBorder(),
-                ),
+                label: 'Destination',
+                hint: 'e.g. Goa',
+                icon: Icons.place_outlined,
                 validator: (value) =>
                 (value == null || value.trim().isEmpty) ? 'Enter a destination' : null,
               ),

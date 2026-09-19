@@ -1,0 +1,12 @@
+/// API keys injected at build/run time via --dart-define, so nothing
+/// secret is committed to source control.
+///
+/// Run with:
+///   flutter run --dart-define=GOOGLE_PLACES_API_KEY=your_key_here
+/// Build with:
+///   flutter build web --dart-define=GOOGLE_PLACES_API_KEY=your_key_here
+///
+/// Never hardcode a real key in this file.
+class ApiKeys {
+  static const googlePlaces = String.fromEnvironment('GOOGLE_PLACES_API_KEY');
+}
