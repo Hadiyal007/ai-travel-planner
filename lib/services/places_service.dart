@@ -30,7 +30,7 @@ class PlacesService {
       Uri.parse(_endpoint),
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': ApiKeys.googlePlaces,
+        'X-Goog-Api-Key': ApiKeys.googlePlacesApiKey,
       },
       body: jsonEncode({'input': input}),
     );
