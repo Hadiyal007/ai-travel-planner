@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Public read-only destinations
+    match /popular_destinations/{destinationId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // User trips
+    match /trips/{tripId} {
+
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read, update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
+  }
+}

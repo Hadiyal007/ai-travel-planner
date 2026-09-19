@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/trip.dart';
 import '../widgets/selectable_chip.dart';
+import '../firebase/auth_providers.dart';
+import '../firebase/trip_providers.dart';
 
-class CreateTripScreen extends StatefulWidget {
+class CreateTripScreen extends ConsumerStatefulWidget {
   const CreateTripScreen({super.key});
 
   @override
-  State<CreateTripScreen> createState() => _CreateTripScreenState();
+  ConsumerState<CreateTripScreen> createState() => _CreateTripScreenState();
 }
 
-class _CreateTripScreenState extends State<CreateTripScreen> {
+class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
   final _formKey = GlobalKey<FormState>();
   final _sourceController = TextEditingController();
   final _destinationController = TextEditingController();
@@ -20,6 +23,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   int _travellers = 1;
   final Set<Interest> _selectedInterests = {};
   TravelStyle _travelStyle = TravelStyle.relaxed;
+  bool _isSaving = false;
 
   static const _interestMeta = {
     Interest.beaches: (label: 'Beaches', icon: Icons.beach_access),
@@ -58,7 +62,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_sourceController.text.trim().toLowerCase() ==
         _destinationController.text.trim().toLowerCase()) {
@@ -77,6 +81,15 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       return;
     }
 
+    final userId = ref.read(authServiceProvider).currentUser?.uid;
+    if (userId == null) {
+      // Shouldn't happen — this screen is only reachable once signed in
+      // via AuthGate — but guard rather than crash on a null UID.
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Please sign in again to save a trip')));
+      return;
+    }
+
     final trip = Trip(
       source: _sourceController.text.trim(),
       destination: _destinationController.text.trim(),
@@ -88,8 +101,20 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       travelStyle: _travelStyle,
     );
 
-    // Itinerary generation (mock for now) is wired in the next step.
-    debugPrint('Trip created: ${trip.source} → ${trip.destination}, ${trip.durationInDays} days');
+    setState(() => _isSaving = true);
+    try {
+      await ref.read(tripServiceProvider).saveTrip(trip, userId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Trip saved!')));
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Could not save trip: $e')));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -221,9 +246,15 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               const SizedBox(height: 32),
 
               ElevatedButton.icon(
-                onPressed: _submit,
-                icon: const Icon(Icons.auto_awesome),
-                label: const Text('Generate Itinerary'),
+                onPressed: _isSaving ? null : _submit,
+                icon: _isSaving
+                    ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+                    : const Icon(Icons.auto_awesome),
+                label: Text(_isSaving ? 'Saving...' : 'Save Trip'),
                 style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               ),
               const SizedBox(height: 24),

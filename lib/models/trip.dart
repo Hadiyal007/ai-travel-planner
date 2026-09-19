@@ -25,6 +25,23 @@ class Trip {
 
   int get durationInDays => endDate.difference(startDate).inDays + 1;
 
+  /// Plain-field map for Firestore. Enum fields are stored as their
+  /// name (e.g. 'balanced') so they read back without relying on enum
+  /// index order. userId/createdAt are added by TripService, not here,
+  /// so this model stays free of any Firestore-specific types.
+  Map<String, dynamic> toMap() {
+    return {
+      'source': source,
+      'destination': destination,
+      'startDate': startDate,
+      'endDate': endDate,
+      'travellers': travellers,
+      'budget': budget,
+      'interests': interests.map((interest) => interest.name).toList(),
+      'travelStyle': travelStyle.name,
+    };
+  }
+
   Trip copyWith({
     String? source,
     String? destination,
