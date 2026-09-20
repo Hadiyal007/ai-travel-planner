@@ -20,6 +20,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
   final _sourceController = TextEditingController();
   final _destinationController = TextEditingController();
   final _budgetController = TextEditingController();
+  final _specialRequestsController = TextEditingController();
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -44,6 +45,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
     _sourceController.dispose();
     _destinationController.dispose();
     _budgetController.dispose();
+    _specialRequestsController.dispose();
     super.dispose();
   }
 
@@ -100,6 +102,9 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
       budget: double.parse(_budgetController.text.trim()),
       interests: _selectedInterests.toList(),
       travelStyle: _travelStyle,
+      specialRequests: _specialRequestsController.text.trim().isEmpty
+          ? null
+          : _specialRequestsController.text.trim(),
     );
 
     setState(() => _isSaving = true);
@@ -233,6 +238,19 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
                 selected: {_travelStyle},
                 onSelectionChanged: (value) => setState(() => _travelStyle = value.first),
               ),
+
+              const SizedBox(height: 20),
+              const Text('Anything specific? (optional)', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _specialRequestsController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. prefer flights over trains, want to stay near Baga Beach, vegetarian food only',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
               const SizedBox(height: 32),
 
               ElevatedButton.icon(

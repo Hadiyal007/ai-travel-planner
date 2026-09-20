@@ -14,6 +14,7 @@ class Trip {
   final double budget;
   final List<Interest> interests;
   final TravelStyle travelStyle;
+  final String? specialRequests;
 
   const Trip({
     this.id,
@@ -25,12 +26,11 @@ class Trip {
     required this.budget,
     required this.interests,
     required this.travelStyle,
+    this.specialRequests,
   });
 
   int get durationInDays => endDate.difference(startDate).inDays + 1;
 
-  /// Reads a trip back from a Firestore document. [id] is the
-  /// document ID (not stored inside the map itself).
   factory Trip.fromMap(Map<String, dynamic> map, {required String id}) {
     return Trip(
       id: id,
@@ -50,13 +50,10 @@ class Trip {
             (style) => style.name == map['travelStyle'],
         orElse: () => TravelStyle.balanced,
       ),
+      specialRequests: map['specialRequests'] as String?,
     );
   }
 
-  /// Plain-field map for Firestore writes. Enum fields are stored as
-  /// their name (e.g. 'balanced') so they read back without relying
-  /// on enum index order. userId/createdAt are added by TripService,
-  /// not here.
   Map<String, dynamic> toMap() {
     return {
       'source': source,
@@ -67,6 +64,7 @@ class Trip {
       'budget': budget,
       'interests': interests.map((interest) => interest.name).toList(),
       'travelStyle': travelStyle.name,
+      'specialRequests': specialRequests,
     };
   }
 
@@ -80,6 +78,7 @@ class Trip {
     double? budget,
     List<Interest>? interests,
     TravelStyle? travelStyle,
+    String? specialRequests,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -91,6 +90,7 @@ class Trip {
       budget: budget ?? this.budget,
       interests: interests ?? this.interests,
       travelStyle: travelStyle ?? this.travelStyle,
+      specialRequests: specialRequests ?? this.specialRequests,
     );
   }
 }

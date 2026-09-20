@@ -12,4 +12,5 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ApiKeys {
   static String get googlePlacesApiKey => dotenv.env['GOOGLE_PLACES_API_KEY'] ?? '';
   static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+  static String get groqApiKey => dotenv.env['GROQ_API_KEY'] ?? '';
 }

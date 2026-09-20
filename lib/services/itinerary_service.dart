@@ -62,28 +62,30 @@ class ItineraryService {
     return activities;
   }
 
-  /// Real AI-generated itinerary via Google Gemini. Same return shape
-  /// (Itinerary) as generateMockItinerary, so ItineraryScreen needs no changes.
+  /// Tries Gemini first; if it fails for any reason, falls back to Groq.
+  /// Same return shape either way, so ItineraryScreen needs no changes.
   Future<Itinerary> generateAiItinerary(Trip trip) async {
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-    );
+    try {
+      return await _callGemini(trip);
+    } catch (e) {
+      print('Gemini failed, falling back to Groq. Reason: $e');
+      // Gemini failed (rate limit, network issue, bad response, etc.) — try Groq.
+      return await _callGroq(trip);
+    }
+  }
 
-    final tripSummary = {
-      'source': trip.source,
-      'destination': trip.destination,
-      'startDate': trip.startDate.toIso8601String(),
-      'endDate': trip.endDate.toIso8601String(),
-      'durationInDays': trip.durationInDays,
-      'travellers': trip.travellers,
-      'budget': trip.budget,
-      'interests': trip.interests.map((i) => i.name).toList(),
-      'travelStyle': trip.travelStyle.name,
-    };
+  String _buildPrompt(Trip trip) {
+    final specialRequestsSection = (trip.specialRequests != null && trip.specialRequests!.trim().isNotEmpty)
+        ? '''
 
-    final prompt = '''
+USER'S SPECIFIC REQUESTS: "${trip.specialRequests!.trim()}"
+Honor any clear, relevant request here (transport preference, hotel/area preference, dietary need, must-see place, etc.) by weaving it naturally into the plan. If any part is unclear or unrelated to travel planning, ignore just that part — don't let it break the plan or the JSON output.
+'''
+        : '';
+
+    return '''
 You are an expert local travel planner for ${trip.destination}. Design a detailed, realistic, NON-REPETITIVE day-by-day itinerary.
-
+$specialRequestsSection
 TRIP DETAILS (use every one of these to shape the plan, don't just acknowledge them):
 - From ${trip.source} to ${trip.destination}
 - ${trip.durationInDays} days total
@@ -103,7 +105,7 @@ VARIETY RULE (critical): No two days should look alike. Each day must visit DIFF
 
 NAMING RULE: Every activity must name a REAL, SPECIFIC, well-known place in ${trip.destination} — an actual named beach, fort, market, museum, trail, viewpoint, etc. For every meal (breakfast/lunch/dinner), name a REAL or realistic-sounding restaurant/cafe/hotel dining option appropriate to the budget tier, not just "Lunch" or "Dinner." Put the specific place name in the "title" field itself (e.g. "Lunch at Britto's Shack, Baga Beach" not "Lunch").
 
-Use the "notes" field to add a short useful detail: why this place fits their interests, an approximate cost, or a tip (e.g. "Try the seafood platter, ~₹400/person — matches your food interest").
+Use the "notes" field to add a short useful detail: why this place fits their interests, an approximate cost, or a tip.
 
 Return ONLY JSON, no markdown, no extra text, matching this exact shape:
 {
@@ -119,33 +121,9 @@ Return ONLY JSON, no markdown, no extra text, matching this exact shape:
 }
 Generate exactly ${trip.durationInDays} day objects, each with genuinely different activities from every other day.
 ''';
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': ApiKeys.geminiApiKey,
-      },
-      body: jsonEncode({
-        'contents': [
-          {
-            'role': 'user',
-            'parts': [
-              {'text': prompt}
-            ]
-          }
-        ],
-        'generationConfig': {'responseMimeType': 'application/json','temperature': 0.9,}
-      }),
-    );
+  }
 
-    if (response.statusCode != 200) {
-      throw Exception('Gemini API error: ${response.statusCode} ${response.body}');
-    }
-
-    final decoded = jsonDecode(response.body);
-    final rawText = decoded['candidates'][0]['content']['parts'][0]['text'] as String;
-    final json = jsonDecode(rawText) as Map<String, dynamic>;
-
+  Itinerary _parseItineraryJson(Map<String, dynamic> json) {
     return Itinerary(
       destination: json['destination'] as String,
       days: (json['days'] as List).map((d) {
@@ -165,5 +143,70 @@ Generate exactly ${trip.durationInDays} day objects, each with genuinely differe
         );
       }).toList(),
     );
+  }
+
+  Future<Itinerary> _callGemini(Trip trip) async {
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+    );
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': ApiKeys.geminiApiKey,
+      },
+      body: jsonEncode({
+        'contents': [
+          {
+            'role': 'user',
+            'parts': [
+              {'text': _buildPrompt(trip)}
+            ]
+          }
+        ],
+        'generationConfig': {
+          'responseMimeType': 'application/json',
+          'temperature': 0.9,
+        }
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Gemini API error: ${response.statusCode} ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+    final rawText = decoded['candidates'][0]['content']['parts'][0]['text'] as String;
+    return _parseItineraryJson(jsonDecode(rawText) as Map<String, dynamic>);
+  }
+
+  Future<Itinerary> _callGroq(Trip trip) async {
+    final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${ApiKeys.groqApiKey}',
+      },
+      body: jsonEncode({
+        'model': 'openai/gpt-oss-120b',
+        'messages': [
+          {'role': 'user', 'content': _buildPrompt(trip)}
+        ],
+        'response_format': {'type': 'json_object'},
+        'temperature': 0.9,
+        'max_completion_tokens': 8000,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Groq API error: ${response.statusCode} ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+    final rawText = decoded['choices'][0]['message']['content'] as String;
+    return _parseItineraryJson(jsonDecode(rawText) as Map<String, dynamic>);
   }
 }

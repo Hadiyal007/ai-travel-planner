@@ -37,9 +37,10 @@ class ItineraryNotifier extends StateNotifier<ItineraryState> {
     try {
       final itinerary = await _service.generateAiItinerary(trip);
       state = state.copyWith(itinerary: itinerary, isLoading: false);
-    } catch (e) {
-      state = ItineraryState(trip: trip, isLoading: false, error: 'Failed to generate itinerary');
     }
+    catch (e) {
+    state = ItineraryState(trip: trip, isLoading: false, error: 'Failed to generate itinerary: $e');
+   }
   }
 }
 
