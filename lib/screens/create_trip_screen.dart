@@ -5,6 +5,8 @@ import '../widgets/selectable_chip.dart';
 import '../widgets/place_autocomplete_field.dart';
 import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
+import '../providers/itinerary_provider.dart';
+import 'itinerary_screen.dart';
 
 class CreateTripScreen extends ConsumerStatefulWidget {
   const CreateTripScreen({super.key});
@@ -63,7 +65,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _analyseTrip() async {
     if (!_formKey.currentState!.validate()) return;
     if (_sourceController.text.trim().toLowerCase() ==
         _destinationController.text.trim().toLowerCase()) {
@@ -84,10 +86,8 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
 
     final userId = ref.read(authServiceProvider).currentUser?.uid;
     if (userId == null) {
-      // Shouldn't happen — this screen is only reachable once signed in
-      // via AuthGate — but guard rather than crash on a null UID.
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Please sign in again to save a trip')));
+          .showSnackBar(const SnackBar(content: Text('Please sign in again to continue')));
       return;
     }
 
@@ -104,15 +104,12 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
 
     setState(() => _isSaving = true);
     try {
-      await ref.read(tripServiceProvider).saveTrip(trip, userId);
+      await ref.read(itineraryProvider.notifier).generate(trip);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Trip saved!')));
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not save trip: $e')));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ItineraryScreen()),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -239,7 +236,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
               const SizedBox(height: 32),
 
               ElevatedButton.icon(
-                onPressed: _isSaving ? null : _submit,
+                onPressed: _isSaving ? null : _analyseTrip,
                 icon: _isSaving
                     ? const SizedBox(
                   height: 18,
@@ -247,7 +244,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
                     : const Icon(Icons.auto_awesome),
-                label: Text(_isSaving ? 'Saving...' : 'Save Trip'),
+                label: Text(_isSaving ? 'Saving...' : 'Analyse Trip'),
                 style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               ),
               const SizedBox(height: 24),

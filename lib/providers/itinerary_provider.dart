@@ -35,7 +35,7 @@ class ItineraryNotifier extends StateNotifier<ItineraryState> {
   Future<void> generate(Trip trip) async {
     state = state.copyWith(trip: trip, isLoading: true, error: null);
     try {
-      final itinerary = await _service.generateMockItinerary(trip);
+      final itinerary = await _service.generateAiItinerary(trip);
       state = state.copyWith(itinerary: itinerary, isLoading: false);
     } catch (e) {
       state = ItineraryState(trip: trip, isLoading: false, error: 'Failed to generate itinerary');
