@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'destination_detail_screen.dart';
 import '../models/destination.dart';
 import '../models/trip.dart';
 import '../widgets/destination_card.dart';
@@ -8,6 +8,7 @@ import '../app/routes.dart';
 import '../firebase/firestore_providers.dart';
 import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
+import 'destination_detail_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -105,12 +106,14 @@ class HomeScreen extends ConsumerWidget {
 
                       return DestinationCard(
                         destination: destination,
-                        onTap: () => Navigator.pushNamed(
+                        onTap: () => Navigator.push(
                           context,
-                          AppRoutes.createTrip,
+                          MaterialPageRoute(
+                            builder: (_) => DestinationDetailScreen(destination: destination),
+                          ),
                         ),
-                      );
-                    },
+
+                      );                    },
                   ),
                 );
               },

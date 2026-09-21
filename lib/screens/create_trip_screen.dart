@@ -8,8 +8,10 @@ import '../firebase/trip_providers.dart';
 import '../providers/itinerary_provider.dart';
 import 'itinerary_screen.dart';
 
+
 class CreateTripScreen extends ConsumerStatefulWidget {
-  const CreateTripScreen({super.key});
+  final String? prefilledDestination;
+  const CreateTripScreen({super.key, this.prefilledDestination});
 
   @override
   ConsumerState<CreateTripScreen> createState() => _CreateTripScreenState();
@@ -39,6 +41,13 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
     Interest.shopping: (label: 'Shopping', icon: Icons.shopping_bag),
     Interest.history: (label: 'History', icon: Icons.account_balance),
   };
+  @override
+  void initState() {
+    super.initState();
+    if (widget.prefilledDestination != null) {
+      _destinationController.text = widget.prefilledDestination!;
+    }
+  }
 
   @override
   void dispose() {
@@ -48,6 +57,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
     _specialRequestsController.dispose();
     super.dispose();
   }
+
 
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
