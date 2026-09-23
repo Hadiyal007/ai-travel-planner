@@ -39,8 +39,8 @@ class ItineraryNotifier extends StateNotifier<ItineraryState> {
       state = state.copyWith(itinerary: itinerary, isLoading: false);
     }
     catch (e) {
-    state = ItineraryState(trip: trip, isLoading: false, error: 'Failed to generate itinerary: $e');
-   }
+      state = ItineraryState(trip: trip, isLoading: false, error: 'Failed to generate itinerary: $e');
+    }
   }
 }
 

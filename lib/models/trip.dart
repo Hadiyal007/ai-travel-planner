@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'itinerary.dart';
 
 enum TravelStyle { relaxed, balanced, packed }
 
@@ -15,6 +16,7 @@ class Trip {
   final List<Interest> interests;
   final TravelStyle travelStyle;
   final String? specialRequests;
+  final Itinerary? itinerary;
 
   const Trip({
     this.id,
@@ -27,6 +29,7 @@ class Trip {
     required this.interests,
     required this.travelStyle,
     this.specialRequests,
+    this.itinerary,
   });
 
   int get durationInDays => endDate.difference(startDate).inDays + 1;
@@ -51,9 +54,18 @@ class Trip {
         orElse: () => TravelStyle.balanced,
       ),
       specialRequests: map['specialRequests'] as String?,
+      // Older trips saved before itinerary persistence was added won't
+      // have this field — Itinerary? stays null and the UI shows a
+      // "not saved" message instead of crashing.
+      itinerary: map['itinerary'] != null
+          ? Itinerary.fromMap(Map<String, dynamic>.from(map['itinerary'] as Map))
+          : null,
     );
   }
 
+  // Deliberately does NOT include `itinerary` — TripService.saveTrip adds
+  // it separately as its own field only when one is passed in, so trip
+  // creation (no itinerary yet) and itinerary save stay independent calls.
   Map<String, dynamic> toMap() {
     return {
       'source': source,
@@ -79,6 +91,7 @@ class Trip {
     List<Interest>? interests,
     TravelStyle? travelStyle,
     String? specialRequests,
+    Itinerary? itinerary,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -91,6 +104,7 @@ class Trip {
       interests: interests ?? this.interests,
       travelStyle: travelStyle ?? this.travelStyle,
       specialRequests: specialRequests ?? this.specialRequests,
+      itinerary: itinerary ?? this.itinerary,
     );
   }
 }

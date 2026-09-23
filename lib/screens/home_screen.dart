@@ -9,6 +9,7 @@ import '../firebase/firestore_providers.dart';
 import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
 import 'destination_detail_screen.dart';
+import 'saved_itinerary_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -172,6 +173,11 @@ class _TripListTile extends StatelessWidget {
         subtitle: Text(
           '${_fmt(trip.startDate)} – ${_fmt(trip.endDate)} · '
               '${trip.travellers} traveller${trip.travellers == 1 ? '' : 's'}',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SavedItineraryScreen(trip: trip)),
         ),
       ),
     );
