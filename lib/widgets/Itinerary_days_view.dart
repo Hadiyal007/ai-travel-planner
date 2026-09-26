@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/activity.dart';
 import '../models/itinerary.dart';
+import '../screens/day_map_screen.dart';
 
 /// Renders an [Itinerary] as a day-tabbed list of activity cards. Used by
 /// both [ItineraryScreen] (right after AI generation) and
@@ -45,26 +46,51 @@ class ItineraryDaysView extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: itinerary.days.map((day) {
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: day.activities.length,
-                  itemBuilder: (context, index) {
-                    final activity = day.activities[index];
-                    return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.1),
-                          child: Icon(_iconFor(activity.type),
-                              color: Theme.of(context).colorScheme.primary),
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DayMapScreen(
+                                day: day,
+                                destination: itinerary.destination,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('View on Map'),
                         ),
-                        title: Text(activity.title),
-                        subtitle: Text(activity.time),
                       ),
-                    );
-                  },
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: day.activities.length,
+                        itemBuilder: (context, index) {
+                          final activity = day.activities[index];
+                          return Card(
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.1),
+                                child: Icon(_iconFor(activity.type),
+                                    color: Theme.of(context).colorScheme.primary),
+                              ),
+                              title: Text(activity.title),
+                              subtitle: Text(activity.time),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               }).toList(),
             ),

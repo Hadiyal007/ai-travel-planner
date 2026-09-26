@@ -6,6 +6,7 @@ import '../widgets/place_autocomplete_field.dart';
 import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
 import '../providers/itinerary_provider.dart';
+import '../utils/budget_validator.dart';
 import 'itinerary_screen.dart';
 
 
@@ -96,6 +97,19 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
       return;
     }
 
+    final budget = double.parse(_budgetController.text.trim());
+    final durationInDays = _endDate!.difference(_startDate!).inDays + 1;
+    final budgetWarning = BudgetValidator.check(
+      budget: budget,
+      durationInDays: durationInDays,
+      travellers: _travellers,
+    );
+    if (budgetWarning != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(budgetWarning)));
+      return;
+    }
+
     final userId = ref.read(authServiceProvider).currentUser?.uid;
     if (userId == null) {
       ScaffoldMessenger.of(context)
@@ -109,7 +123,7 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
       startDate: _startDate!,
       endDate: _endDate!,
       travellers: _travellers,
-      budget: double.parse(_budgetController.text.trim()),
+      budget: budget,
       interests: _selectedInterests.toList(),
       travelStyle: _travelStyle,
       specialRequests: _specialRequestsController.text.trim().isEmpty
