@@ -6,6 +6,7 @@ import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
 import '../widgets/itinerary_days_view.dart';
 
+
 class ItineraryScreen extends ConsumerStatefulWidget {
   const ItineraryScreen({super.key});
 
@@ -74,7 +75,12 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
             }
             return Column(
               children: [
-                Expanded(child: ItineraryDaysView(itinerary: itinerary)),
+                Expanded(
+                  child: ItineraryDaysView(
+                    itinerary: itinerary,
+                    tripId: state.trip?.id,
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: ElevatedButton.icon(

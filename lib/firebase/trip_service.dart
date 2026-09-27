@@ -34,4 +34,17 @@ class TripService {
         .map((doc) => Trip.fromMap(doc.data(), id: doc.id))
         .toList());
   }
+
+  /// Overwrites the saved `itinerary` field for [tripId] with [itinerary]
+  /// — used by [DayMapScreen] to persist activity coordinates the first
+  /// time they're geocoded, so a saved trip's map never needs to hit the
+  /// (heavily rate-limited) Places API again for the same activity.
+  /// Writes the whole itinerary rather than a single array entry because
+  /// Firestore doesn't support updating one element of an array field by
+  /// index/path.
+  Future<void> updateItinerary(String tripId, Itinerary itinerary) async {
+    await _firestore.collection('trips').doc(tripId).update({
+      'itinerary': itinerary.toMap(),
+    });
+  }
 }

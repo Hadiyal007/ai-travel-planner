@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../firebase/trip_service.dart';
 import '../models/activity.dart';
 import '../models/itinerary.dart';
 import '../screens/day_map_screen.dart';
@@ -9,8 +10,9 @@ import '../screens/day_map_screen.dart';
 /// tab/card UI only lives in one place.
 class ItineraryDaysView extends StatelessWidget {
   final Itinerary itinerary;
+  final String? tripId;
 
-  const ItineraryDaysView({super.key, required this.itinerary});
+  const ItineraryDaysView({super.key, required this.itinerary, this.tripId});
 
   IconData _iconFor(ActivityType type) {
     switch (type) {
@@ -59,6 +61,25 @@ class ItineraryDaysView extends StatelessWidget {
                               builder: (_) => DayMapScreen(
                                 day: day,
                                 destination: itinerary.destination,
+                                onActivitiesResolved: tripId == null
+                                    ? null
+                                    : (resolvedActivities) {
+                                  final updatedDays = itinerary.days
+                                      .map((d) => d.dayNumber == day.dayNumber
+                                      ? ItineraryDay(
+                                    dayNumber: d.dayNumber,
+                                    activities: resolvedActivities,
+                                  )
+                                      : d)
+                                      .toList();
+                                  TripService().updateItinerary(
+                                    tripId!,
+                                    Itinerary(
+                                      destination: itinerary.destination,
+                                      days: updatedDays,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),

@@ -33,7 +33,21 @@ class DayMapScreen extends StatefulWidget {
   final ItineraryDay day;
   final String destination;
 
-  const DayMapScreen({super.key, required this.day, required this.destination});
+  /// Called once, only if at least one activity that didn't already have
+  /// stored coordinates got newly geocoded — with the day's full
+  /// activity list, in order, coordinates merged in. Callers that have
+  /// somewhere to persist this (a saved trip's Firestore doc) should
+  /// write it back so the same activity never needs geocoding again.
+  /// Left null for itineraries that aren't saved yet (nothing to write
+  /// back to).
+  final ValueChanged<List<Activity>>? onActivitiesResolved;
+
+  const DayMapScreen({
+    super.key,
+    required this.day,
+    required this.destination,
+    this.onActivitiesResolved,
+  });
 
   @override
   State<DayMapScreen> createState() => _DayMapScreenState();
@@ -55,6 +69,21 @@ class _DayMapScreenState extends State<DayMapScreen> {
     _resolveLocations();
   }
 
+  /// Strips a stray activity-type label the AI sometimes bakes directly
+  /// into the title text itself (e.g. "Sightseeing: Calangute Beach, Goa,
+  /// India", "Checkin: Taj Exotica Resort, Goa, India") — on top of the
+  /// separate structured `type` field. Left in, it becomes noise at the
+  /// front of the geocoding query; Google's fuzzy search often shrugs it
+  /// off, but Nominatim's stricter parser frequently returns zero
+  /// results for a query starting with a label like that.
+  String _stripTypeLabel(String title) {
+    final match = RegExp(
+      r'^(meal|breakfast|lunch|dinner|sightseeing|travel|check-?in|leisure|adventure)\s*:\s*',
+      caseSensitive: false,
+    ).firstMatch(title);
+    return match == null ? title : title.substring(match.end).trim();
+  }
+
   /// Builds the geocoding query for one activity. Most activities (meals,
   /// check-ins, sightseeing) have a title that's already a place name, so
   /// appending the destination for disambiguation is enough. `travel`
@@ -64,17 +93,27 @@ class _DayMapScreenState extends State<DayMapScreen> {
   /// destination and geocode that instead, falling back to the day's
   /// destination city if no "to X" is found.
   String _queryFor(Activity activity) {
+    final title = _stripTypeLabel(activity.title);
+
     if (activity.type == ActivityType.travel) {
       final match = RegExp(r'\bto\s+(.+?)(?:\s+(?:by|via)\s+.+)?$',
           caseSensitive: false)
-          .firstMatch(activity.title);
+          .firstMatch(title);
       final place = match?.group(1)?.trim();
       if (place != null && place.isNotEmpty) {
         return '$place, ${widget.destination}';
       }
       return widget.destination;
     }
-    return '${activity.title}, ${widget.destination}';
+
+    // The AI sometimes already includes the destination city in the
+    // title itself (e.g. "Calangute Beach, Goa, India") — appending it
+    // again produces a duplicated, noisier query that trips up
+    // Nominatim's parser more often than it helps disambiguate.
+    if (title.toLowerCase().contains(widget.destination.toLowerCase())) {
+      return title;
+    }
+    return '$title, ${widget.destination}';
   }
 
   /// Geocodes every activity's query, but in small batches rather than
@@ -98,15 +137,47 @@ class _DayMapScreenState extends State<DayMapScreen> {
 
   Future<void> _resolveLocations() async {
     final activities = widget.day.activities;
-    final results = await _geocodeAll(activities.map(_queryFor).toList());
+
+    // Activities that already carry stored coordinates (from a previous
+    // visit, persisted via onActivitiesResolved) skip geocoding entirely
+    // — this is what keeps a saved trip's map from re-hitting the
+    // (heavily rate-limited) Places API on every revisit.
+    final needsGeocode = <int>[];
+    final queries = <String>[];
+    for (var i = 0; i < activities.length; i++) {
+      if (!activities[i].hasLocation) {
+        needsGeocode.add(i);
+        queries.add(_queryFor(activities[i]));
+      }
+    }
+
+    final freshResults = await _geocodeAll(queries);
+
+    final resolvedActivities = List<Activity>.from(activities);
+    var anyNewlyResolved = false;
+    for (var j = 0; j < needsGeocode.length; j++) {
+      final point = freshResults[j];
+      if (point == null) continue;
+      final i = needsGeocode[j];
+      resolvedActivities[i] = activities[i].copyWith(
+        latitude: point.latitude,
+        longitude: point.longitude,
+      );
+      anyNewlyResolved = true;
+    }
+
+    if (anyNewlyResolved) {
+      widget.onActivitiesResolved?.call(resolvedActivities);
+    }
 
     final stops = <_Stop>[];
     final points = <LatLng>[];
     var unresolved = 0;
 
-    for (var i = 0; i < activities.length; i++) {
-      final point = results[i];
-      stops.add(_Stop(activity: activities[i], order: i + 1, point: point));
+    for (var i = 0; i < resolvedActivities.length; i++) {
+      final a = resolvedActivities[i];
+      final point = a.hasLocation ? LatLng(a.latitude!, a.longitude!) : null;
+      stops.add(_Stop(activity: a, order: i + 1, point: point));
       if (point == null) {
         unresolved++;
       } else {

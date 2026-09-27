@@ -44,7 +44,7 @@ class SavedItineraryScreen extends StatelessWidget {
             ),
           ),
         )
-            : ItineraryDaysView(itinerary: itinerary),
+            : ItineraryDaysView(itinerary: itinerary, tripId: trip.id),
       ),
     );
   }
