@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../app/routes.dart';
+import '../widgets/brand_mark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,17 +22,26 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primary,
+      backgroundColor: AppTheme.indigoNight,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.travel_explore, size: 72, color: Colors.white),
-            const SizedBox(height: 16),
+            // A passport-stamp ring around the mark, rather than a bare
+            // icon — the one bold gesture on this screen.
+            const BrandMark(size: 96, iconColor: Colors.white),
+            const SizedBox(height: 24),
             Text(
               'AI Travel Planner',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Plans that actually fit your trip',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white70,
               ),
             ),
           ],

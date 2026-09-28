@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app/routes.dart';
+import '../app/theme.dart';
 import '../firebase/auth_providers.dart';
+import '../widgets/brand_mark.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -54,12 +56,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             key: _formKey,
             child: ListView(
               children: [
-                const Icon(Icons.travel_explore, size: 56),
                 const SizedBox(height: 12),
+                const Center(child: BrandMark()),
+                const SizedBox(height: 20),
                 Text(
                   'Start planning your trips',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'A free account to save every itinerary',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.inkMuted),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
@@ -69,7 +78,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
                     final email = value?.trim() ?? '';
@@ -88,7 +96,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
-                    border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePassword
                           ? Icons.visibility_outlined
@@ -112,7 +119,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Confirm Password',
                     prefixIcon: Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value != _passwordController.text) {
@@ -136,7 +142,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                       : const Text('Sign Up'),
                 ),

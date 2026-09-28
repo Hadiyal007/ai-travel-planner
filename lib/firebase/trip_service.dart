@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/trip.dart';
 import '../models/itinerary.dart';
 
@@ -30,9 +31,15 @@ class TripService {
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => Trip.fromMap(doc.data(), id: doc.id))
-        .toList());
+        .map((snapshot) {
+      if (kDebugMode) {
+        debugPrint('[TripService] user=$userId trips=${snapshot.docs.length} '
+            'fromCache=${snapshot.metadata.isFromCache}');
+      }
+      return snapshot.docs
+          .map((doc) => Trip.fromMap(doc.data(), id: doc.id))
+          .toList();
+    });
   }
 
   /// Overwrites the saved `itinerary` field for [tripId] with [itinerary]

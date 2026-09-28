@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../app/theme.dart';
 import '../services/places_service.dart';
 
 /// A text field that looks up Google Places suggestions as the user
@@ -84,12 +85,11 @@ class _PlaceAutocompleteFieldState extends State<PlaceAutocompleteField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
         TextFormField(
           controller: widget.controller,
           onChanged: _onChanged,
           decoration: InputDecoration(
+            labelText: widget.label,
             hintText: widget.hint,
             prefixIcon: Icon(widget.icon),
             suffixIcon: _isLoading
@@ -102,7 +102,6 @@ class _PlaceAutocompleteFieldState extends State<PlaceAutocompleteField> {
               ),
             )
                 : null,
-            border: const OutlineInputBorder(),
           ),
           validator: widget.validator,
         ),
@@ -110,25 +109,26 @@ class _PlaceAutocompleteFieldState extends State<PlaceAutocompleteField> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(_error!,
-                style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                style: TextStyle(fontSize: 12, color: Colors.orange.shade800)),
           ),
         if (_suggestions.isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 6),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.black12),
-              borderRadius: BorderRadius.circular(8),
+              color: AppTheme.surface,
+              border: Border.all(color: AppTheme.hairline),
+              borderRadius: BorderRadius.circular(12),
             ),
             constraints: const BoxConstraints(maxHeight: 220),
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: _suggestions.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, __) => const Divider(height: 1, color: AppTheme.hairline),
               itemBuilder: (context, index) {
                 final suggestion = _suggestions[index];
                 return ListTile(
                   dense: true,
-                  leading: const Icon(Icons.place_outlined, size: 20),
+                  leading: const Icon(Icons.place_outlined, size: 20, color: AppTheme.inkMuted),
                   title: Text(suggestion.description),
                   onTap: () {
                     widget.controller.text = suggestion.description;

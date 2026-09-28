@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app/routes.dart';
+import '../app/theme.dart';
 import '../firebase/auth_providers.dart';
+import '../widgets/brand_mark.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -52,12 +54,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             key: _formKey,
             child: ListView(
               children: [
-                const Icon(Icons.travel_explore, size: 56),
                 const SizedBox(height: 12),
+                const Center(child: BrandMark()),
+                const SizedBox(height: 20),
                 Text(
                   'Welcome back',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Log in to keep planning your trips',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.inkMuted),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
@@ -67,7 +76,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) {
                     final email = value?.trim() ?? '';
@@ -86,7 +94,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
-                    border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePassword
                           ? Icons.visibility_outlined
@@ -118,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                       : const Text('Log In'),
                 ),

@@ -23,19 +23,22 @@ class SelectableChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary : Colors.black.withOpacity(0.05),
+          color: selected ? AppTheme.marigold : AppTheme.surface,
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selected ? AppTheme.marigold : AppTheme.hairline,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: selected ? Colors.white : Colors.black54),
+            Icon(icon, size: 16, color: selected ? Colors.white : AppTheme.indigoNight),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w500,
+                color: selected ? Colors.white : AppTheme.indigoNight,
+                fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
             ),

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../app/theme.dart';
 import '../models/activity.dart';
 import '../models/itinerary.dart';
 import '../services/geocoding_service.dart';
@@ -28,7 +29,8 @@ class _Stop {
 ///
 /// Markers are numbered to match the order strip beneath the map, so it's
 /// clear at a glance which stop is which and what order they run in —
-/// green for the first stop of the day, red for the last, blue in between.
+/// marigold for the first stop of the day, chili-red for the last,
+/// indigo for everything between (the app's own stop-order palette).
 class DayMapScreen extends StatefulWidget {
   final ItineraryDay day;
   final String destination;
@@ -193,10 +195,10 @@ class _DayMapScreenState extends State<DayMapScreen> {
       final icon = await _numberedMarkerIcon(
         stop.order,
         color: stop.isFirst
-            ? Colors.green.shade600
+            ? AppTheme.stopFirst
             : isLast
-            ? Colors.red.shade600
-            : Colors.blue.shade600,
+            ? AppTheme.stopLast
+            : AppTheme.stopMiddle,
       );
       markers.add(Marker(
         markerId: MarkerId('${stop.order}_${stop.activity.title}'),
@@ -290,12 +292,20 @@ class _DayMapScreenState extends State<DayMapScreen> {
           if (_unresolvedCount > 0)
             Container(
               width: double.infinity,
-              color: Colors.amber.shade100,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-              child: Text(
-                '$_unresolvedCount location${_unresolvedCount == 1 ? '' : 's'} '
-                    'couldn\'t be found and ${_unresolvedCount == 1 ? 'is' : 'are'} not shown',
-                style: const TextStyle(fontSize: 12),
+              color: AppTheme.chili.withOpacity(0.1),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: AppTheme.chili),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '$_unresolvedCount location${_unresolvedCount == 1 ? '' : 's'} '
+                          'couldn\'t be found and ${_unresolvedCount == 1 ? 'is' : 'are'} not shown',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.chili),
+                    ),
+                  ),
+                ],
               ),
             ),
           Expanded(
@@ -363,10 +373,10 @@ class _StopsStrip extends StatelessWidget {
           final badgeColor = !resolved
               ? Colors.grey.shade400
               : stop.isFirst
-              ? Colors.green.shade600
+              ? AppTheme.stopFirst
               : isLast
-              ? Colors.red.shade600
-              : Colors.blue.shade600;
+              ? AppTheme.stopLast
+              : AppTheme.stopMiddle;
 
           return Opacity(
             opacity: resolved ? 1 : 0.55,
