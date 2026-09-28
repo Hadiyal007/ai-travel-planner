@@ -7,6 +7,7 @@ import '../app/theme.dart';
 import '../models/activity.dart';
 import '../models/itinerary.dart';
 import '../services/geocoding_service.dart';
+import '../utils/route_optimizer.dart';
 
 /// One activity plus its place in the day's running order and, if it
 /// could be resolved, its coordinates.
@@ -168,16 +169,28 @@ class _DayMapScreenState extends State<DayMapScreen> {
       anyNewlyResolved = true;
     }
 
-    if (anyNewlyResolved) {
-      widget.onActivitiesResolved?.call(resolvedActivities);
+    // Reorder the day's flexible stops (sightseeing/leisure/adventure)
+    // to shorten the route; meals, check-ins, travel legs and
+    // time-specific stops keep their place. See RouteOptimizer.
+    final optimized = RouteOptimizer.optimize(resolvedActivities);
+    var orderChanged = false;
+    for (var i = 0; i < optimized.length; i++) {
+      if (optimized[i].title != resolvedActivities[i].title) {
+        orderChanged = true;
+        break;
+      }
+    }
+
+    if (anyNewlyResolved || orderChanged) {
+      widget.onActivitiesResolved?.call(optimized);
     }
 
     final stops = <_Stop>[];
     final points = <LatLng>[];
     var unresolved = 0;
 
-    for (var i = 0; i < resolvedActivities.length; i++) {
-      final a = resolvedActivities[i];
+    for (var i = 0; i < optimized.length; i++) {
+      final a = optimized[i];
       final point = a.hasLocation ? LatLng(a.latitude!, a.longitude!) : null;
       stops.add(_Stop(activity: a, order: i + 1, point: point));
       if (point == null) {

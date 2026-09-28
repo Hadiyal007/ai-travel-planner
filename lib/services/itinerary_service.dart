@@ -105,6 +105,8 @@ VARIETY RULE (critical): No two days should look alike. Each day must visit DIFF
 
 NAMING RULE: Every activity must name a REAL, SPECIFIC, well-known place in ${trip.destination} — an actual named beach, fort, market, museum, trail, viewpoint, etc. For every meal (breakfast/lunch/dinner), name a REAL or realistic-sounding restaurant/cafe/hotel dining option appropriate to the budget tier, not just "Lunch" or "Dinner." Put the specific place name in the "title" field itself (e.g. "Lunch at Britto's Shack, Baga Beach" not "Lunch").
 
+ROUTE RULE (critical): The traveller should not waste time in transit. Within each day, group stops by neighbourhood/area and order them so the next stop is close to the previous one — do NOT zigzag across the city or send the traveller back and forth. Pick each day's main area, plan that day's sightseeing and meals inside or next to it, and choose the hotel/dining near the day's route. Keep each day's stops in a logical geographic sequence with times to match. Do not put a category label like "Sightseeing:" or "Leisure:" at the start of a title — the "type" field already carries that.
+
 Use the "notes" field to add a short useful detail: why this place fits their interests, an approximate cost, or a tip.
 
 Return ONLY JSON, no markdown, no extra text, matching this exact shape:
