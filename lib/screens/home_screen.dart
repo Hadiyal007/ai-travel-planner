@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'destination_detail_screen.dart';
@@ -20,6 +21,51 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('AI Travel Planner'),
         actions: [
+          // Debug-only: seeds lib/firebase/destination_seed_data.dart into
+          // Firestore. Safe to tap more than once — it skips destinations
+          // that are already there by name. Remove this button (or just
+          // leave it; it's excluded from release builds) once you've
+          // seeded what you need.
+          // if (kDebugMode)
+          //   IconButton(
+          //     icon: const Icon(Icons.cloud_upload_outlined),
+          //     tooltip: 'Seed popular destinations (debug only)',
+          //     onPressed: () async {
+          //       final messenger = ScaffoldMessenger.of(context);
+          //       final added = await ref
+          //           .read(firestoreServiceProvider)
+          //           .seedPopularDestinations();
+          //       messenger.showSnackBar(
+          //         SnackBar(
+          //           content: Text(added == 0
+          //               ? 'No new destinations to add'
+          //               : 'Added $added new destination${added == 1 ? '' : 's'}'),
+          //         ),
+          //       );
+          //     },
+          //   ),
+          // Debug-only: pushes the current imageUrl (and galleryImages)
+          // values from destination_seed_data.dart onto destinations
+          // that already exist in Firestore, matched by name. Use this
+          // after replacing the placeholder image URLs with real ones.
+          // if (kDebugMode)
+          //   IconButton(
+          //     icon: const Icon(Icons.image_outlined),
+          //     tooltip: 'Update destination images (debug only)',
+          //     onPressed: () async {
+          //       final messenger = ScaffoldMessenger.of(context);
+          //       final updated = await ref
+          //           .read(firestoreServiceProvider)
+          //           .updatePopularDestinationImages();
+          //       messenger.showSnackBar(
+          //         SnackBar(
+          //           content: Text(updated == 0
+          //               ? 'No matching destinations to update'
+          //               : 'Updated $updated destination${updated == 1 ? '' : 's'}'),
+          //         ),
+          //       );
+          //     },
+          //   ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Log out',
