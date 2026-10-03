@@ -42,6 +42,13 @@ class TripService {
     });
   }
 
+  /// Deletes [tripId] permanently. The Firestore rule for /trips/{tripId}
+  /// must allow `delete` for the trip's own owner — see the security
+  /// rules snippet in the project notes if this throws permission-denied.
+  Future<void> deleteTrip(String tripId) async {
+    await _firestore.collection('trips').doc(tripId).delete();
+  }
+
   /// Overwrites the saved `itinerary` field for [tripId] with [itinerary]
   /// — used by [DayMapScreen] to persist activity coordinates the first
   /// time they're geocoded, so a saved trip's map never needs to hit the

@@ -37,6 +37,15 @@ class AuthService {
     await _auth.signOut();
   }
 
+  /// Sends a password-reset email via Firebase Auth. Callers should show
+  /// the same confirmation message regardless of whether this succeeds
+  /// or throws user-not-found — revealing which emails have an account
+  /// is an information leak, so the UI treats both the same way and
+  /// doesn't need to inspect the result here.
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
   /// Converts a FirebaseAuthException (or anything else) into a message
   /// that's safe to show directly in the UI.
   String messageForError(Object error) {

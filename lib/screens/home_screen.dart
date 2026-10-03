@@ -162,7 +162,12 @@ class HomeScreen extends ConsumerWidget {
                   );
                 }
                 return Column(
-                  children: trips.map((trip) => _BoardingPassTripCard(trip: trip)).toList(),
+                  children: trips
+                      .map((trip) => _BoardingPassTripCard(
+                    trip: trip,
+                    onDelete: () => ref.read(tripServiceProvider).deleteTrip(trip.id!),
+                  ))
+                      .toList(),
                 );
               },
             ),
@@ -226,94 +231,145 @@ class _HeroBanner extends StatelessWidget {
 /// rather than a plain generic list tile.
 class _BoardingPassTripCard extends StatelessWidget {
   final Trip trip;
+  final Future<void> Function() onDelete;
 
-  const _BoardingPassTripCard({required this.trip});
+  const _BoardingPassTripCard({required this.trip, required this.onDelete});
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete this trip?'),
+        content: Text(
+          'This removes your ${trip.source} → ${trip.destination} trip and its '
+              'saved itinerary. This can\'t be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.chili),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final nights = trip.durationInDays - 1;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
+    return Dismissible(
+      key: ValueKey(trip.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) async {
+        try {
+          await onDelete();
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('Couldn\'t delete trip: $e')));
+          }
+        }
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: AppTheme.chili,
           borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => SavedItineraryScreen(trip: trip)),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.hairline),
+        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Material(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => SavedItineraryScreen(trip: trip)),
             ),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.hairline),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.flight_takeoff, size: 14, color: AppTheme.inkMuted),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${_fmt(trip.startDate)} – ${_fmt(trip.endDate)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: AppTheme.inkMuted),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${trip.source} → ${trip.destination}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${trip.travellers} traveller${trip.travellers == 1 ? '' : 's'}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppTheme.inkMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const _Perforation(),
+                    Container(
+                      width: 64,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.flight_takeoff, size: 14, color: AppTheme.inkMuted),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${_fmt(trip.startDate)} – ${_fmt(trip.endDate)}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(color: AppTheme.inkMuted),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
                           Text(
-                            '${trip.source} → ${trip.destination}',
-                            style: Theme.of(context).textTheme.titleMedium,
+                            '$nights',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: AppTheme.marigold,
+                            ),
                           ),
-                          const SizedBox(height: 4),
                           Text(
-                            '${trip.travellers} traveller${trip.travellers == 1 ? '' : 's'}',
+                            nights == 1 ? 'night' : 'nights',
                             style: Theme.of(context)
                                 .textTheme
-                                .bodySmall
+                                .labelSmall
                                 ?.copyWith(color: AppTheme.inkMuted),
                           ),
+                          const SizedBox(height: 4),
+                          const Icon(Icons.chevron_right, size: 18, color: AppTheme.inkMuted),
                         ],
                       ),
                     ),
-                  ),
-                  const _Perforation(),
-                  Container(
-                    width: 64,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '$nights',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: AppTheme.marigold,
-                          ),
-                        ),
-                        Text(
-                          nights == 1 ? 'night' : 'nights',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(color: AppTheme.inkMuted),
-                        ),
-                        const SizedBox(height: 4),
-                        const Icon(Icons.chevron_right, size: 18, color: AppTheme.inkMuted),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

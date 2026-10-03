@@ -26,6 +26,72 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController(text: _emailController.text.trim());
+    final dialogFormKey = GlobalKey<FormState>();
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset password'),
+        content: Form(
+          key: dialogFormKey,
+          child: TextFormField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              prefixIcon: Icon(Icons.email_outlined),
+            ),
+            validator: (value) {
+              final trimmed = value?.trim() ?? '';
+              if (trimmed.isEmpty || !trimmed.contains('@') || !trimmed.contains('.')) {
+                return 'Enter a valid email';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (dialogFormKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, emailController.text.trim());
+              }
+            },
+            child: const Text('Send reset link'),
+          ),
+        ],
+      ),
+    );
+
+    if (email == null || !mounted) return;
+
+    // Always show the same message whether or not an account exists for
+    // this email — revealing that distinction is an account-enumeration
+    // leak. The actual send is best-effort; errors are swallowed here
+    // for that same reason (a network failure is rare enough that
+    // "check your email" with nothing arriving is an acceptable
+    // trade-off against leaking account existence).
+    try {
+      await ref.read(authServiceProvider).sendPasswordResetEmail(email);
+    } catch (_) {
+      // Intentionally ignored — see comment above.
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('If an account exists for $email, a reset link has been sent.'),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -109,6 +175,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     }
                     return null;
                   },
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: authState.isLoading ? null : _showForgotPasswordDialog,
+                    child: const Text('Forgot password?'),
+                  ),
                 ),
                 if (authState.error != null) ...[
                   const SizedBox(height: 16),
