@@ -109,6 +109,8 @@ ROUTE RULE (critical): The traveller should not waste time in transit. Within ea
 
 Use the "notes" field to add a short useful detail: why this place fits their interests, an approximate cost, or a tip.
 
+COST RULE (critical): For every activity, estimate "estimatedCost" as a realistic cost in INR, as a plain number (no currency symbol, no text) — and critically, as the TOTAL for all ${trip.travellers} traveller(s) combined for that one activity, not a per-person figure. A free or already-paid-for activity (e.g. "Relax at the hotel pool", a included hotel breakfast) should use 0, not null — only use null if you genuinely can't estimate it. These numbers across the whole itinerary should realistically add up to roughly the ₹${trip.budget} total budget, reflecting the budget-tier choices you made per the BUDGET RULE above.
+
 Return ONLY JSON, no markdown, no extra text, matching this exact shape:
 {
   "destination": "string",
@@ -116,7 +118,7 @@ Return ONLY JSON, no markdown, no extra text, matching this exact shape:
     {
       "dayNumber": 1,
       "activities": [
-        {"time": "09:00", "title": "string", "type": "meal|sightseeing|travel|checkin|leisure|adventure", "notes": "string or null"}
+        {"time": "09:00", "title": "string", "type": "meal|sightseeing|travel|checkin|leisure|adventure", "notes": "string or null", "estimatedCost": 0}
       ]
     }
   ]
@@ -140,6 +142,7 @@ Generate exactly ${trip.durationInDays} day objects, each with genuinely differe
                 orElse: () => ActivityType.leisure,
               ),
               notes: a['notes'] as String?,
+              estimatedCost: (a['estimatedCost'] as num?)?.toDouble(),
             );
           }).toList(),
         );

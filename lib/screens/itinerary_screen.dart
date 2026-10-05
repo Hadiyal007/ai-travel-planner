@@ -5,7 +5,7 @@ import '../providers/itinerary_provider.dart';
 import '../firebase/auth_providers.dart';
 import '../firebase/trip_providers.dart';
 import '../widgets/itinerary_days_view.dart';
-
+import 'budget_summary_screen.dart';
 
 class ItineraryScreen extends ConsumerStatefulWidget {
   const ItineraryScreen({super.key});
@@ -83,17 +83,42 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _saveTrip,
-                    icon: _isSaving
-                        ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(_isSaving ? 'Saving...' : 'Save Trip'),
-                    style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: state.trip == null
+                              ? null
+                              : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BudgetSummaryScreen(
+                                trip: state.trip!,
+                                itinerary: itinerary,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.receipt_long_outlined),
+                          label: const Text('Budget Summary'),
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isSaving ? null : _saveTrip,
+                          icon: _isSaving
+                              ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                              : const Icon(Icons.save_outlined),
+                          label: Text(_isSaving ? 'Saving...' : 'Save Trip'),
+                          style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // Padding(

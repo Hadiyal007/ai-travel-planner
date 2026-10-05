@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../app/theme.dart';
 import '../models/trip.dart';
 import '../widgets/itinerary_days_view.dart';
+import 'budget_summary_screen.dart';
 
 /// Shows a previously saved [Trip]'s itinerary, read-only — reached by
 /// tapping a trip on Home's "Your Trips" list. Unlike [ItineraryScreen],
@@ -19,7 +21,23 @@ class SavedItineraryScreen extends StatelessWidget {
     final itinerary = trip.itinerary;
 
     return Scaffold(
-      appBar: AppBar(title: Text('${trip.source} → ${trip.destination}')),
+      appBar: AppBar(
+        title: Text('${trip.source} → ${trip.destination}'),
+        actions: [
+          if (itinerary != null)
+            IconButton(
+              icon: const Icon(Icons.receipt_long_outlined),
+              tooltip: 'Budget Summary',
+              color: AppTheme.indigoNight,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BudgetSummaryScreen(trip: trip, itinerary: itinerary),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: itinerary == null
             ? Center(

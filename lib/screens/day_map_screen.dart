@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -9,14 +10,28 @@ import '../models/itinerary.dart';
 import '../services/geocoding_service.dart';
 import '../utils/route_optimizer.dart';
 
-/// One activity plus its place in the day's running order and, if it
-/// could be resolved, its coordinates.
+/// One point on the map, in the day's running order, and if it could be
+/// resolved, its coordinates. Usually one [_Stop] per [Activity] — but a
+/// travel activity with a recognizable "X to Y" shape produces two: an
+/// origin stop (synthetic — not its own saved Activity) and the main
+/// stop for the activity itself, so a flight or transfer shows where it
+/// starts as well as where it ends rather than only the arrival point.
 class _Stop {
   final Activity activity;
   final int order; // 1-based position within the day
   final LatLng? point;
+  final String? titleOverride;
+  final bool isOrigin;
 
-  const _Stop({required this.activity, required this.order, this.point});
+  const _Stop({
+    required this.activity,
+    required this.order,
+    this.point,
+    this.titleOverride,
+    this.isOrigin = false,
+  });
+
+  String get title => titleOverride ?? activity.title;
 
   bool get isFirst => order == 1;
 }
@@ -87,24 +102,67 @@ class _DayMapScreenState extends State<DayMapScreen> {
     return match == null ? title : title.substring(match.end).trim();
   }
 
-  /// Builds the geocoding query for one activity. Most activities (meals,
-  /// check-ins, sightseeing) have a title that's already a place name, so
-  /// appending the destination for disambiguation is enough. `travel`
-  /// activities are different: their title is a sentence describing a
-  /// journey (e.g. "Travel from Nadiad to Surat by Shatabdi Express"),
-  /// which Places Text Search can't match as-is — so pull out the "to X"
-  /// destination and geocode that instead, falling back to the day's
-  /// destination city if no "to X" is found.
+  /// Appends disambiguating context to a bare place name — but only the
+  /// day's destination if that place genuinely looks like part of it.
+  /// Blindly appending the destination to EVERY place name is wrong for
+  /// a travel leg's origin (e.g. the "Surat" side of a Haridwar→Surat
+  /// return flight): querying "Surat, Haridwar" is a contradiction that
+  /// fails to resolve at all, which is why return-journey legs were
+  /// silently disappearing from the map entirely.
+  String _withContext(String place) {
+    final normalizedPlace = place.toLowerCase();
+    final normalizedDestination = widget.destination.toLowerCase();
+    if (normalizedDestination.contains(normalizedPlace) ||
+        normalizedPlace.contains(normalizedDestination)) {
+      return '$place, ${widget.destination}';
+    }
+    // Not part of this day's destination (most likely a different city
+    // entirely, like a flight's other end) — a generic country-level
+    // hint is safer than actively wrong context.
+    return '$place, India';
+  }
+
+  /// Pulls the origin and destination place names out of a travel
+  /// activity's title (e.g. "Flight Surat to Haridwar", "Travel from
+  /// Nadiad to Surat by Shatabdi Express") — both groups, not just the
+  /// destination, so a flight/transfer can be plotted as two points
+  /// (where it starts, where it ends) rather than silently dropping the
+  /// origin. Returns null if the title doesn't match this shape at all
+  /// (e.g. "Transfer to hotel" has no clear origin).
+  RegExpMatch? _travelLegMatch(String title) {
+    return RegExp(
+      r'^(?:\w+[:\s]+)?(?:from\s+)?(.+?)\s+to\s+(.+?)(?:\s+(?:by|via)\s+.+)?$',
+      caseSensitive: false,
+    ).firstMatch(title);
+  }
+
+  /// Strips a trailing parenthetical aside from an extracted place name
+  /// — the AI sometimes writes multi-leg journeys like "Nadiad Bus Stand
+  /// to Goa (bus to Ahmedabad + flight from Ahmedabad)", where the whole
+  /// "(...)" is detail about the journey, not part of the place name.
+  /// Left in, it gets sent to the geocoder as part of the query and
+  /// produces a near-random wrong match instead of just "Goa".
+  String _cleanPlaceName(String raw) {
+    final withoutParens = raw.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+    return withoutParens.isEmpty ? raw.trim() : withoutParens;
+  }
+
+  /// Builds the geocoding query for one activity's own point. Most
+  /// activities (meals, check-ins, sightseeing) have a title that's
+  /// already a place name, so appending context is enough. `travel`
+  /// activities are different: the title is a sentence describing a
+  /// journey, so this extracts just the arrival place (the "to Y" part)
+  /// rather than geocoding the whole sentence — the origin side ("from
+  /// X") is handled separately in [_resolveLocations] as its own extra
+  /// point, not folded into this one.
   String _queryFor(Activity activity) {
     final title = _stripTypeLabel(activity.title);
 
     if (activity.type == ActivityType.travel) {
-      final match = RegExp(r'\bto\s+(.+?)(?:\s+(?:by|via)\s+.+)?$',
-          caseSensitive: false)
-          .firstMatch(title);
-      final place = match?.group(1)?.trim();
-      if (place != null && place.isNotEmpty) {
-        return '$place, ${widget.destination}';
+      final match = _travelLegMatch(title);
+      final arrival = match?.group(2)?.trim();
+      if (arrival != null && arrival.isNotEmpty) {
+        return _withContext(_cleanPlaceName(arrival));
       }
       return widget.destination;
     }
@@ -116,8 +174,37 @@ class _DayMapScreenState extends State<DayMapScreen> {
     if (title.toLowerCase().contains(widget.destination.toLowerCase())) {
       return title;
     }
+    // Unlike a travel leg's origin/destination, a regular stop is
+    // always located AT this day's destination by definition — so
+    // always anchor it there, rather than routing through _withContext's
+    // more cautious "only if it textually overlaps" logic. A query like
+    // "Taj Exotica Resort & Spa" mentions neither Goa nor India, so
+    // without this it fell back to a bare ", India" — vague enough that
+    // the geocoder picked the far more famous same-named resort in the
+    // Maldives instead of the actual Goa property.
     return '$title, ${widget.destination}';
   }
+
+  /// Rough straight-line distance in km between two points (haversine).
+  /// Used only to sanity-check a regular stop's geocoded result against
+  /// the day's actual destination — never applied to travel-leg points,
+  /// which are expected to span long distances on purpose.
+  double _kmBetween(LatLng a, LatLng b) {
+    const earthRadiusKm = 6371.0;
+    final dLat = (b.latitude - a.latitude) * (math.pi / 180);
+    final dLng = (b.longitude - a.longitude) * (math.pi / 180);
+    final lat1 = a.latitude * (math.pi / 180);
+    final lat2 = b.latitude * (math.pi / 180);
+    final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.sin(dLng / 2) * math.sin(dLng / 2) * math.cos(lat1) * math.cos(lat2);
+    return 2 * earthRadiusKm * math.asin(math.sqrt(h));
+  }
+
+  /// A regular stop resolving further than this from the day's
+  /// destination almost certainly means the geocoder matched the wrong
+  /// same-named place in a different city or country entirely, not a
+  /// legitimately far-flung local day-trip spot.
+  static const _sameAreaRadiusKm = 150.0;
 
   /// Geocodes every activity's query, but in small batches rather than
   /// all at once. A day with 8-9 activities firing that many concurrent
@@ -141,16 +228,36 @@ class _DayMapScreenState extends State<DayMapScreen> {
   Future<void> _resolveLocations() async {
     final activities = widget.day.activities;
 
+    // A rough anchor for "where this day actually happens" — used below
+    // to sanity-check regular (non-travel) stops against. Resolving it
+    // once up front is cheap (one extra geocode call per day opened)
+    // and is what makes it possible to catch a wrong-city match instead
+    // of just trusting whatever the geocoder returns.
+    final destinationAnchor = await _geocodingService.geocode(widget.destination);
+
+    bool isSane(Activity a, LatLng point) {
+      if (a.type == ActivityType.travel || destinationAnchor == null) return true;
+      return _kmBetween(point, destinationAnchor) <= _sameAreaRadiusKm;
+    }
+
     // Activities that already carry stored coordinates (from a previous
-    // visit, persisted via onActivitiesResolved) skip geocoding entirely
-    // — this is what keeps a saved trip's map from re-hitting the
-    // (heavily rate-limited) Places API on every revisit.
+    // visit, persisted via onActivitiesResolved) normally skip
+    // geocoding entirely — this is what keeps a saved trip's map from
+    // re-hitting the (heavily rate-limited) Places API on every
+    // revisit. The one exception, besides travel-leg origins (handled
+    // separately below): a stored point that fails the sanity check
+    // above — e.g. a previously-saved "Taj Exotica Resort & Spa" that
+    // resolved to the Maldives before this check existed — gets a
+    // chance to re-resolve properly instead of silently keeping a
+    // wrong location forever.
     final needsGeocode = <int>[];
     final queries = <String>[];
     for (var i = 0; i < activities.length; i++) {
-      if (!activities[i].hasLocation) {
+      final a = activities[i];
+      final storedPoint = a.hasLocation ? LatLng(a.latitude!, a.longitude!) : null;
+      if (storedPoint == null || !isSane(a, storedPoint)) {
         needsGeocode.add(i);
-        queries.add(_queryFor(activities[i]));
+        queries.add(_queryFor(a));
       }
     }
 
@@ -160,8 +267,16 @@ class _DayMapScreenState extends State<DayMapScreen> {
     var anyNewlyResolved = false;
     for (var j = 0; j < needsGeocode.length; j++) {
       final point = freshResults[j];
-      if (point == null) continue;
       final i = needsGeocode[j];
+      if (point == null || !isSane(activities[i], point)) {
+        // Either didn't resolve, or resolved somewhere implausible —
+        // either way, don't keep a bad stored coordinate from before.
+        if (activities[i].hasLocation) {
+          resolvedActivities[i] = activities[i].clearLocation();
+          anyNewlyResolved = true;
+        }
+        continue;
+      }
       resolvedActivities[i] = activities[i].copyWith(
         latitude: point.latitude,
         longitude: point.longitude,
@@ -185,14 +300,51 @@ class _DayMapScreenState extends State<DayMapScreen> {
       widget.onActivitiesResolved?.call(optimized);
     }
 
+    // Travel activities get a second, synthetic "origin" query — e.g.
+    // "Flight Surat to Haridwar" produces both a Surat point and a
+    // Haridwar point, instead of only the arrival. Built as a separate
+    // pass (not merged into the main geocode batch above) because the
+    // origin side is never persisted to the Activity, so it has to be
+    // resolved fresh on every visit regardless of hasLocation.
+    final originQueries = <int, String>{}; // activity index -> query
+    for (var i = 0; i < optimized.length; i++) {
+      final a = optimized[i];
+      if (a.type != ActivityType.travel) continue;
+      final match = _travelLegMatch(_stripTypeLabel(a.title));
+      final origin = match?.group(1)?.trim();
+      if (origin == null || origin.isEmpty) continue;
+      originQueries[i] = _withContext(_cleanPlaceName(origin));
+    }
+    final originResults = await _geocodeAll(originQueries.values.toList());
+    final originPoints = <int, LatLng>{};
+    var oi = 0;
+    for (final index in originQueries.keys) {
+      final point = originResults[oi++];
+      if (point != null) originPoints[index] = point;
+    }
+
     final stops = <_Stop>[];
     final points = <LatLng>[];
     var unresolved = 0;
+    var order = 1;
 
     for (var i = 0; i < optimized.length; i++) {
       final a = optimized[i];
+
+      final originPoint = originPoints[i];
+      if (originPoint != null) {
+        stops.add(_Stop(
+          activity: a,
+          order: order++,
+          point: originPoint,
+          titleOverride: 'Depart: ${_cleanPlaceName(_travelLegMatch(_stripTypeLabel(a.title))?.group(1)?.trim() ?? '')}',
+          isOrigin: true,
+        ));
+        points.add(originPoint);
+      }
+
       final point = a.hasLocation ? LatLng(a.latitude!, a.longitude!) : null;
-      stops.add(_Stop(activity: a, order: i + 1, point: point));
+      stops.add(_Stop(activity: a, order: order++, point: point));
       if (point == null) {
         unresolved++;
       } else {
@@ -201,10 +353,11 @@ class _DayMapScreenState extends State<DayMapScreen> {
     }
 
     final markers = <Marker>{};
+    final lastOrder = stops.isEmpty ? 0 : stops.last.order;
     for (final stop in stops) {
       final point = stop.point;
       if (point == null) continue;
-      final isLast = stop.order == activities.length;
+      final isLast = stop.order == lastOrder;
       final icon = await _numberedMarkerIcon(
         stop.order,
         color: stop.isFirst
@@ -214,11 +367,11 @@ class _DayMapScreenState extends State<DayMapScreen> {
             : AppTheme.stopMiddle,
       );
       markers.add(Marker(
-        markerId: MarkerId('${stop.order}_${stop.activity.title}'),
+        markerId: MarkerId('${stop.order}_${stop.title}'),
         position: point,
         icon: icon,
         infoWindow: InfoWindow(
-          title: '${stop.order}. ${stop.activity.title}',
+          title: '${stop.order}. ${stop.title}',
           snippet: stop.activity.time,
         ),
       ));
@@ -424,11 +577,22 @@ class _StopsStrip extends StatelessWidget {
                             style: theme.textTheme.labelSmall,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            stop.activity.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (stop.isOrigin) ...[
+                                const Icon(Icons.flight_takeoff, size: 12, color: AppTheme.inkMuted),
+                                const SizedBox(width: 4),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  stop.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                            ],
                           ),
                           if (!resolved)
                             const Padding(
